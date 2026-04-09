@@ -41,7 +41,14 @@ app.use('/api', blogRoutes);
 app.use('/api', contactRoutes);
 app.use("/api/upload", uploadRoutes);
 
+/*
+Health check route (optional but recommended)
+*/
+app.get("/", (req, res) => {
+  res.send("API is running...");
+});
+
 
 app.listen(PORT, () => {
-    console.log(`Server is listening at http://localhost:${PORT}`);
+    console.log(`Server running on port:${PORT}`);
 });
