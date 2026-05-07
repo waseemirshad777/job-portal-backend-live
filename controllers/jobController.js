@@ -1,5 +1,7 @@
 const nodemailer = require('nodemailer');
 const Subscriber = require('../models/Subscriber');
+const uploadHelper = require('../utils/uploadHelper');
+const emailService = require('../services/emailService');
 const Job = require('../models/Job');
 
 const jobController = {
@@ -56,22 +58,21 @@ const jobController = {
             const emailList = subscribers.map(subscriber => subscriber.email);
 
             if (emailList.length > 0) {
-                const transporter = nodemailer.createTransport({
-                    service: 'Gmail',
-                    auth: {
-                        user: process.env.SMTP_USER,
-                        pass: process.env.SMTP_PASS
-                    }
-                });
-
-                const mailOptions = {
-                    from: process.env.SMTP_USER,
-                    to: emailList,
-                    subject: 'New Job Posted',
-                    text: `A new job has been posted:\n\nTitle: ${title}\nCompany: ${company}\nLocation: ${location}\n\nVisit the website to apply. \n http://localhost:5173/`
-                };
-
-                await transporter.sendMail(mailOptions);
+                await emailService.sendNewJobPostedEmail(
+                    emailList,
+                    {
+                        title,
+                        company,
+                        location,
+                        jobType,
+                        jobCategory,
+                        salaryFrom,
+                        salaryTo,
+                        salaryCurrency
+                    },
+                    // `${process.env.FRONTEND_URL}`
+                    `${process.env.FRONTEND_URL}/job-detail/${job._id}`
+                );
             }
 
             res.status(200).json({ message: "Job posted successfully", job, status: 201 });
@@ -128,7 +129,9 @@ const jobController = {
             job.description = description || job.description;
             job.requirements = requirements || job.requirements;
             job.closingDate = closingDate || job.closingDate;
+
             if (jobImage) {
+                await uploadHelper.handleImageReplacement(job.jobImage, jobImage);
                 job.jobImage = jobImage;
             }
             
@@ -265,10 +268,17 @@ async getAllJobs(req, res) {
     async deleteJob(req, res) {
         try {
             const { jobId } = req.params;
-            const job = await Job.findByIdAndDelete(jobId);
+
+             const job = await Job.findById(jobId);
+                        
             if (!job) {
                 return res.status(404).json({ message: "Job not found" });
             }
+
+            if (job.jobImage) {
+                await uploadHelper.handleImageDeletion(job.jobImage);
+            }
+            await Job.findByIdAndDelete(jobId);
 
             res.status(200).json({ message: "Job deleted successfully" });
         } catch (err) {

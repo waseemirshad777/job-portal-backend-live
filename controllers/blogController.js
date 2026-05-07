@@ -1,4 +1,5 @@
 const Blog = require('../models/Blog');
+const uploadHelper = require('../utils/uploadHelper');
 
 const blogController = {
     async postBlog(req, res) {
@@ -59,12 +60,14 @@ const blogController = {
             blog.user = user || blog.user;
             blog.blogKeywords = blogKeywords || blog.blogKeywords;
             blog.blogContent = blogContent || blog.blogContent;
+            
+            // Handle image replacement - automatically deletes old image from Cloudinary
             if (blogImage) {
+                await uploadHelper.handleImageReplacement(blog.blogImage, blogImage);
                 blog.blogImage = blogImage;
             }
             
             await blog.save();
-
 
             res.status(200).json({ message: "Blog updated successfully", blog, status: 201 });
         } catch (err) {
@@ -136,14 +139,21 @@ async getAllBlogs(req, res) {
 
 
 
-
     async deleteBlog(req, res) {
         try {
             const { blogId } = req.params;
-            const blog = await Blog.findByIdAndDelete(blogId);
+            const blog = await Blog.findById(blogId);
+            
             if (!blog) {
                 return res.status(404).json({ message: "Blog not found" });
             }
+
+            // Delete image from Cloudinary before deleting blog
+            if (blog.blogImage) {
+                await uploadHelper.handleImageDeletion(blog.blogImage);
+            }
+
+            await Blog.findByIdAndDelete(blogId);
 
             res.status(200).json({ message: "Blog deleted successfully" });
         } catch (err) {

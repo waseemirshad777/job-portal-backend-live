@@ -1,4 +1,5 @@
 // seed/adminSeeder.js
+require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');  
@@ -16,7 +17,7 @@ const seedAdmin = async () => {
         const confirmPassword = await bcrypt.hash('12345678', 10);
         const admin = new User({
           username: 'admin',
-          email: 'admin@mail.com',
+          email: 'admin@gmail.com',
           role: 'admin',
           fname: 'CH',
           lname: 'Admin',

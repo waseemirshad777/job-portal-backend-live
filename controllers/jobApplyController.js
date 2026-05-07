@@ -1,6 +1,7 @@
 
 const nodemailer = require('nodemailer');
 const jobApplication = require('../models/JobApplications');
+const emailService = require('../services/emailService');
 const Job = require('../models/Job');
 
 const jobApplyController = {
@@ -21,29 +22,16 @@ const jobApplyController = {
             }
 
         
-            const transporter = nodemailer.createTransport({
-                service: 'Gmail',
-                auth: {
-                    user: process.env.SMTP_USER,
-                    pass: process.env.SMTP_PASS
-                }
-            });
-
-            // Email options
-            const mailOptions = {
-                from: email,
-                to: applyEmail,
-                subject: 'Job Application',
-                text: `Employee Name: ${fullName}`,
-                attachments: [
-                    {
-                        path: resume
-                    }
-                ]
-            };
-
-            // Send email
-            transporter.sendMail(mailOptions);
+            await emailService.sendJobApplicationEmail(
+                {
+                    fullName,
+                    email,
+                    jobTitle,
+                    employerCompany,
+                    applyEmail
+                },
+                resume
+            );
 
             // Save the email record in the database
             const application = new jobApplication({ 

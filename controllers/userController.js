@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const uploadHelper = require('../utils/uploadHelper');
 
 const userController = {
     async listUsers(req, res) {
@@ -31,7 +32,6 @@ const userController = {
         try {
             const { id } = req.params;
             const { email, username, fname, lname } = req.body;
-            const profilePhoto = req.file ? req.file.path : null;
 
             // Check if user exists
             let user = await User.findById(id);
@@ -45,8 +45,10 @@ const userController = {
             user.lname = lname;
             user.username = username;
 
-            if (profilePhoto) {
-                user.profilePhoto = profilePhoto;
+            if (req.file) {
+              // Auto delete old, use new
+              await uploadHelper.handleImageReplacement(user.profilePhoto, req.file.path);
+              user.profilePhoto = req.file.path;
             }
 
             await user.save();

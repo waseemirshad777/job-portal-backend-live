@@ -1,5 +1,6 @@
 const Resume = require('../models/Resume');
 const mongoose = require('mongoose');
+const uploadHelper = require('../utils/uploadHelper');
 
 // Add a new resume
 const addResume = async (req, res) => {
@@ -70,10 +71,47 @@ const updateResume = async (req, res) => {
     resume.contactInfo.phone = phone || resume.contactInfo.phone;
     resume.contactInfo.email = email || resume.contactInfo.email;
 
-    // If files are provided, update the file paths
-    if (req.files['resumeBanner']) resume.resumeBanner = req.files['resumeBanner'][0].path;
-    if (req.files['profilePicture']) resume.profilePicture = req.files['profilePicture'][0].path;
-    if (req.files['resume']) resume.uploadedResume = req.files['resume'][0].path;
+    // Handle all file replacements in parallel
+    await Promise.all([
+        (async () => {
+            if (req.files?.resumeBanner?.[0]?.path) {
+                const newResumeBanner = req.files.resumeBanner[0].path;
+            
+                await uploadHelper.handleImageReplacement(
+                    resume.resumeBanner,
+                    newResumeBanner
+                );
+              
+                resume.resumeBanner = newResumeBanner;
+            }
+        })(),
+      
+        (async () => {
+            if (req.files?.profilePicture?.[0]?.path) {
+                const newProfilePicture = req.files.profilePicture[0].path;
+            
+                await uploadHelper.handleImageReplacement(
+                    resume.profilePicture,
+                    newProfilePicture
+                );
+              
+                resume.profilePicture = newProfilePicture;
+            }
+        })(),
+      
+        (async () => {
+            if (req.files?.resume?.[0]?.path) {
+                const newResumeFile = req.files.resume[0].path;
+            
+                await uploadHelper.handleImageReplacement(
+                    resume.uploadedResume,
+                    newResumeFile
+                );
+              
+                resume.uploadedResume = newResumeFile;
+            }
+        })()
+    ]);
 
     await resume.save();
     res.status(200).json({ message: 'Resume updated successfully', resume });
@@ -159,10 +197,28 @@ const getallResumes = async (req, res)=> {
 const deleteResume = async (req, res)=> {
   try {
       const { resumeId } = req.params;
-      const resume = await Resume.findByIdAndDelete(resumeId);
+
+      const resume = await Resume.findById(resumeId);
+                  
       if (!resume) {
           return res.status(404).json({ message: "Resume not found" });
       }
+      
+      await Promise.all([
+        resume.resumeBanner
+            ? uploadHelper.handleImageDeletion(resume.resumeBanner)
+            : Promise.resolve(),
+          
+        resume.profilePicture
+            ? uploadHelper.handleImageDeletion(resume.profilePicture)
+            : Promise.resolve(),
+          
+        resume.uploadedResume
+            ? uploadHelper.handleImageDeletion(resume.uploadedResume)
+            : Promise.resolve()
+      ]);
+
+      await Resume.findByIdAndDelete(resumeId);
 
       res.status(200).json({ message: "Resume deleted successfully" });
   } catch (err) {

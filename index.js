@@ -1,5 +1,5 @@
 
-require('dotenv').config();
+// require('dotenv').config();
 
 const express = require('express');
 const authRoutes = require('./routes/auth');
@@ -50,5 +50,6 @@ app.get("/", (req, res) => {
 
 
 app.listen(PORT, () => {
-    console.log(`Server running on port:${PORT}`);
+  console.log("ENV CHECK:", process.env.MONGO_URI ? "FOUND" : "NOT FOUND");
+  console.log(`Server running on port:${PORT}`);
 });

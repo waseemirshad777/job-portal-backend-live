@@ -1,5 +1,6 @@
 // controllers/subscriptionController.js
 const Subscriber = require('../models/Subscriber');
+const emailService = require('../services/emailService');
 
 const subscriptionController = {
     async subscribe(req, res) {
@@ -17,6 +18,9 @@ const subscriptionController = {
 
             const newSubscriber = new Subscriber({ email });
             await newSubscriber.save();
+
+            // Send confirmation email
+            await emailService.sendSubscriptionConfirmationEmail(email);
 
             res.status(200).json({ message: "Subscribed successfully", status: 201 });
         } catch (err) {

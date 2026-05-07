@@ -1,6 +1,7 @@
 const Company = require('../models/Companies');
 const Job = require('../models/Job');
 const mongoose = require('mongoose');
+const uploadHelper = require('../utils/uploadHelper');
 
 // Add a new company
 const addCompany = async (req, res) => {
@@ -63,9 +64,33 @@ const updateCompany = async (req, res) => {
     company.contactInfo.phone = phone || company.contactInfo.phone;
     company.contactInfo.email = email || company.contactInfo.email;
 
-    // If files are provided, update the file paths
-    if (req.files['companyBanner']) company.companyBanner = req.files['companyBanner'][0].path;
-    if (req.files['companyLogo']) company.companyLogo = req.files['companyLogo'][0].path;
+    await Promise.all([
+        (async () => {
+            if (req.files?.companyBanner?.[0]?.path) {
+                const newBanner = req.files.companyBanner[0].path;
+            
+                await uploadHelper.handleImageReplacement(
+                    company.companyBanner,
+                    newBanner
+                );
+              
+                company.companyBanner = newBanner;
+            }
+        })(),
+      
+        (async () => {
+            if (req.files?.companyLogo?.[0]?.path) {
+                const newLogo = req.files.companyLogo[0].path;
+            
+                await uploadHelper.handleImageReplacement(
+                    company.companyLogo,
+                    newLogo
+                );
+              
+                company.companyLogo = newLogo;
+            }
+        })()
+    ]);
 
     await company.save();
     res.status(200).json({ message: 'Company updated successfully', company });
@@ -180,11 +205,23 @@ const companyNames = async (req, res) => {
 const deleteCompany = async (req, res)=> {
   try {
       const { id } = req.params;
-      const company = await Company.findByIdAndDelete(id);
+      const company = await Company.findById(id);
       if (!company) {
-          return res.status(404).json({ message: "Company not found" });
+        return res.status(404).json({ message: "Company not found" });
       }
 
+      await Promise.all([
+          company.companyBanner
+              ? uploadHelper.handleImageDeletion(company.companyBanner)
+              : Promise.resolve(),
+            
+          company.companyLogo
+              ? uploadHelper.handleImageDeletion(company.companyLogo)
+              : Promise.resolve(),
+            
+      ]);
+      await Company.findByIdAndDelete(id);
+      
       res.status(200).json({ message: "company deleted successfully" });
   } catch (err) {
       console.error("Error in deleting company:", err);
